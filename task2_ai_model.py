@@ -1,5 +1,5 @@
 """
-Task 2: AI Models for Energy Prediction
+Task 2: Simple AI models that predict the energy usage from load and type only.
 Comparing: Linear Regression, Decision Tree, Random Forest, XGBoost
 """
 
