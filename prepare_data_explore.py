@@ -16,6 +16,17 @@ df_bsinfo = pd.read_csv(os.path.join(base_dir, 'BSinfo.csv'))
 df_cldata = pd.read_csv(os.path.join(base_dir, 'CLdata.csv'))
 df_ecdata = pd.read_csv(os.path.join(base_dir, 'ECdata.csv'))
 
+# Ensure 'Time' column is numeric in all datasets
+df_bsinfo['Time'] = pd.to_numeric(df_bsinfo['Time'], errors='coerce')
+df_cldata['Time'] = pd.to_numeric(df_cldata['Time'], errors='coerce')
+df_ecdata['Time'] = pd.to_numeric(df_ecdata['Time'], errors='coerce')
+
+# Drop rows with invalid 'Time' values
+for df_name, df in zip(['BSinfo', 'CLdata', 'ECdata'], [df_bsinfo, df_cldata, df_ecdata]):
+    if df['Time'].isnull().any():
+        print(f"Warning: Dropping rows with invalid 'Time' values in {df_name}.")
+        df.dropna(subset=['Time'], inplace=True)
+
 # Merge CLdata + BSinfo (by BS, CellName)
 df_step1 = pd.merge(df_cldata, df_bsinfo, on=['BS', 'CellName'], how='left')
 
@@ -42,6 +53,15 @@ df_merged = df_merged[important_cols + other_cols]
 df_merged.to_csv(output_path, index=False)
 
 print(f"Data processing complete. Saved {len(df_merged):,} rows to {output_path}")
+
+# Check time range in merged data
+if df_merged['Time'].max() < 144:
+    print("Warning: Maximum 'Time' value in merged data is less than 144 hours.")
+
+if df_merged.empty:
+    raise ValueError("Merged dataset is empty after preprocessing. Please check input files.")
+
+print(f"Merged dataset contains {len(df_merged)} rows after preprocessing.")
 
 # Create comprehensive data coverage heatmap for ALL base stations
 print("Generating data coverage heatmap...")
