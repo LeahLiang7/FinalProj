@@ -14,44 +14,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xgboost as xgb
 
-# Load original data files
+
+# Use the cleaned, filtered dataset for modeling
 base_dir = os.path.dirname(os.path.abspath(__file__))
+filtered_data = pd.read_csv(os.path.join(base_dir, 'filtered_energy_data.csv'))
 
-cldata = pd.read_csv(os.path.join(base_dir, 'CLdata.csv'))
-bsinfo = pd.read_csv(os.path.join(base_dir, 'BSinfo.csv'))
-ecdata = pd.read_csv(os.path.join(base_dir, 'ECdata.csv'))
-
-# Parse time column
-cldata['Time'] = pd.to_datetime(cldata['Time'])
-ecdata['Time'] = pd.to_datetime(ecdata['Time'])
-
-# Calculate hours from start (1/1/2023 1:00)
-start_time = pd.to_datetime('1/1/2023 1:00')
-cldata['Hours'] = ((cldata['Time'] - start_time).dt.total_seconds() / 3600).astype(int) + 1
-ecdata['Hours'] = ((ecdata['Time'] - start_time).dt.total_seconds() / 3600).astype(int) + 1
-
-# Merge datasets
-data = cldata.merge(ecdata[['Time', 'BS', 'Energy']], on=['Time', 'BS'], how='inner')
-data = data.merge(bsinfo, on=['BS', 'CellName'], how='left')
-
-# Extract BS number for filtering
-data['BS_num'] = data['BS'].str.extract(r'(\d+)').astype(int)
-
-# Filter data: BS 0-809, Hours 1-144, Cell0 only
-filtered_data = data[(data['BS_num'] <= 809) &
-                     (data['Hours'] <= 144) &
-                     (data['CellName'] == 'Cell0')].copy()
-
-print(f"Filtered data: {len(filtered_data):,} rows")
+print(f"Loaded filtered data: {len(filtered_data):,} rows")
 print(f"Unique BS count: {filtered_data['BS'].nunique()}")
-print(f"Time range after filter: Hours {filtered_data['Hours'].min()} to {filtered_data['Hours'].max()}")
-
-# Select relevant columns for the summary CSV
-summary_columns = ['BS', 'Time', 'Hours', 'CellName', 'RUType', 'load', 'Energy', 'Mode', 'Frequency', 'Bandwidth', 'Antennas', 'TXpower', 'ESMode1', 'ESMode2', 'ESMode3', 'ESMode4', 'ESMode5', 'ESMode6']
-summary_csv_path = os.path.join(base_dir, 'task2_summary.csv')
-filtered_data[summary_columns].to_csv(summary_csv_path, index=False)
-
-print(f"Summary CSV saved to: {summary_csv_path}")
+print(f"Time range: Hours {filtered_data['Hours'].min()} to {filtered_data['Hours'].max()}")
 
 # Prepare data for AI model
 print("Preparing data for AI model")

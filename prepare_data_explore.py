@@ -16,29 +16,39 @@ df_bsinfo = pd.read_csv(os.path.join(base_dir, 'BSinfo.csv'))
 df_cldata = pd.read_csv(os.path.join(base_dir, 'CLdata.csv'))
 df_ecdata = pd.read_csv(os.path.join(base_dir, 'ECdata.csv'))
 
-# Merge CLdata + BSinfo (by BS, CellName)
+
+
+# 1. Parse time columns and generate 'Hours' field
+df_cldata['Time'] = pd.to_datetime(df_cldata['Time'])
+df_ecdata['Time'] = pd.to_datetime(df_ecdata['Time'])
+start_time = pd.to_datetime('1/1/2023 1:00')
+df_cldata['Hours'] = ((df_cldata['Time'] - start_time).dt.total_seconds() / 3600).astype(int) + 1
+df_ecdata['Hours'] = ((df_ecdata['Time'] - start_time).dt.total_seconds() / 3600).astype(int) + 1
+
+# 2. Merge CLdata with BSinfo, then merge with ECdata
 df_step1 = pd.merge(df_cldata, df_bsinfo, on=['BS', 'CellName'], how='left')
+df_merged = pd.merge(df_step1, df_ecdata[['Time', 'BS', 'Energy', 'Hours']], on=['Time', 'BS'], how='inner')
 
-# Merge result + ECdata (by BS, Time)
-df_merged = pd.merge(df_step1, df_ecdata, on=['BS', 'Time'], how='left')
+# 3. Extract BS number for filtering
+df_merged['BS_num'] = df_merged['BS'].str.extract(r'(\d+)').astype(int)
 
-# Remove rows without energy data
-df_merged = df_merged.dropna(subset=['Energy'])
+# 4. Filter data: BS_num <= 809, Hours <= 72, CellName == 'Cell0'
+df_merged = df_merged[(df_merged['BS_num'] <= 809) &
+                     (df_merged['Hours_x'] <= 72) &
+                     (df_merged['CellName'] == 'Cell0')].copy()
 
-# Filter for Cell0 only
-df_merged = df_merged[df_merged['CellName'] == 'Cell0']
-
-# Flag multiple cell cases
+# 5. Flag multi-cell cases
 cell_counts = df_merged.groupby(['BS', 'Time']).size().reset_index(name='num_cells_for_this_energy')
 df_merged = df_merged.merge(cell_counts, on=['BS', 'Time'], how='left')
 df_merged['energy_shared_by_multiple_cells'] = df_merged['num_cells_for_this_energy'] > 1
 
-# Save processed data
+# 6. Save the cleaned data
 output_path = os.path.join(base_dir, 'energy_data_final.csv')
-important_cols = ['energy_shared_by_multiple_cells', 'num_cells_for_this_energy', 
-                  'Time', 'BS', 'CellName', 'Energy', 'load']
+important_cols = ['energy_shared_by_multiple_cells', 'num_cells_for_this_energy',
+                  'Time', 'Hours_x', 'BS', 'BS_num', 'CellName', 'Energy', 'load']
 other_cols = [col for col in df_merged.columns if col not in important_cols]
 df_merged = df_merged[important_cols + other_cols]
+df_merged = df_merged.rename(columns={'Hours_x': 'Hours'})
 df_merged.to_csv(output_path, index=False)
 
 print(f"Data processing complete. Saved {len(df_merged):,} rows to {output_path}")
