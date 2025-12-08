@@ -30,9 +30,21 @@ merged = merged.merge(bsinfo, on=['BS', 'CellName'], how='left')
 # Extract BS number for filtering
 merged['BS_num'] = merged['BS'].str.extract(r'(\d+)').astype(int)
 
-# Filter data: BS 0-809, Hours 1-72, Cell0 only
+# Identify base stations that ONLY have Cell0 (no other cells)
+bs_cell_counts = bsinfo.groupby('BS')['CellName'].nunique()
+single_cell_bs = bs_cell_counts[bs_cell_counts == 1].index.tolist()
+
+# Further filter: only keep BS that have Cell0 as their only cell
+single_cell0_bs = bsinfo[(bsinfo['BS'].isin(single_cell_bs)) & 
+                         (bsinfo['CellName'] == 'Cell0')]['BS'].unique()
+
+print(f"Total BS with only one cell: {len(single_cell_bs)}")
+print(f"BS with only Cell0: {len(single_cell0_bs)}")
+
+# Filter data: BS 0-809, Hours 1-72, BS that only have Cell0
 filtered = merged[(merged['BS_num'] <= 809) &
                   (merged['Hours'] <= 72) &
+                  (merged['BS'].isin(single_cell0_bs)) &
                   (merged['CellName'] == 'Cell0')].copy()
 
 print(f"Filtered data: {len(filtered):,} rows")
