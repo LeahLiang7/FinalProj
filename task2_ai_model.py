@@ -40,8 +40,18 @@ if len(X) != len(y):
 
 print(f"Dataset size before splitting: {len(X)} samples")
 
-# Split data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Split data by time: 0-48 hours for training, 49-72 hours for testing
+# This is more realistic for time-series data
+train_mask = filtered_data['Hours'] <= 48
+test_mask = filtered_data['Hours'] > 48
+
+X_train = X[train_mask]
+X_test = X[test_mask]
+y_train = y[train_mask]
+y_test = y[test_mask]
+
+print(f"Training set: Hours 1-48, {len(X_train):,} samples ({len(X_train)/len(X)*100:.1f}%)")
+print(f"Test set: Hours 49-72, {len(X_test):,} samples ({len(X_test)/len(X)*100:.1f}%)")
 
 # Define models to train
 models = {
@@ -87,6 +97,23 @@ for model_name, model in models.items():
     
     print(f"  Train - MAE: {metrics['train_mae']:.2f}, RMSE: {metrics['train_rmse']:.2f}, R²: {metrics['train_r2']:.4f}")
     print(f"  Test  - MAE: {metrics['test_mae']:.2f}, RMSE: {metrics['test_rmse']:.2f}, R²: {metrics['test_r2']:.4f}")
+
+# Save trained models for reuse
+import pickle
+print("\nSaving trained models...")
+with open(os.path.join(base_dir, 'trained_models.pkl'), 'wb') as f:
+    pickle.dump({
+        'models': {name: result['model'] for name, result in results.items()},
+        'predictions': {name: {'y_train_pred': result['y_train_pred'], 
+                               'y_test_pred': result['y_test_pred']} 
+                       for name, result in results.items()},
+        'data_info': {
+            'X_train_shape': X_train.shape,
+            'X_test_shape': X_test.shape,
+            'feature_names': list(X_train.columns)
+        }
+    }, f)
+print("Saved: trained_models.pkl")
 
 # Save metrics comparison
 metrics_df = pd.DataFrame({
