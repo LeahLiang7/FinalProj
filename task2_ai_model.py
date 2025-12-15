@@ -41,7 +41,6 @@ if len(X) != len(y):
 print(f"Dataset size before splitting: {len(X)} samples")
 
 # Split data by time: 0-48 hours for training, 49-72 hours for testing
-# This is more realistic for time-series data
 train_mask = filtered_data['Hours'] <= 48
 test_mask = filtered_data['Hours'] > 48
 
