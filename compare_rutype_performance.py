@@ -264,44 +264,20 @@ n_rutypes = len(rutypes)
 rutype_train = rutype_train.reset_index(drop=True)
 rutype_test = rutype_test.reset_index(drop=True)
 
-# Create one plot per model, showing all RUTypes
+# Create one plot per model, showing only TEST SET
 for model_name in models_list:
-    y_train_pred = model_predictions[model_name]['y_train_pred']
     y_test_pred = model_predictions[model_name]['y_test_pred']
     
-    # Create figure with 2 rows (train/test) and n_rutypes columns
-    fig, axes = plt.subplots(2, n_rutypes, figsize=(4*n_rutypes, 8))
+    # Create figure with 1 row and n_rutypes columns (ONLY TEST SET)
+    fig, axes = plt.subplots(1, n_rutypes, figsize=(4*n_rutypes, 4.5))
+    
+    # Handle single subplot case
+    if n_rutypes == 1:
+        axes = [axes]
     
     for idx, rutype in enumerate(rutypes):
-        # Train set for this RUType
-        train_idx = (rutype_train == rutype).values
         test_idx = (rutype_test == rutype).values
-        
-        # Train plot
-        ax_train = axes[0, idx] if n_rutypes > 1 else axes[0]
-        
-        if train_idx.sum() > 0:
-            y_train_true = y_train.iloc[train_idx]
-            y_train_pred_rt = y_train_pred[train_idx]
-            
-            train_r2 = r2_score(y_train_true, y_train_pred_rt)
-            train_mae = mean_absolute_error(y_train_true, y_train_pred_rt)
-            
-            ax_train.scatter(y_train_true, y_train_pred_rt, color='skyblue', alpha=0.4, s=10)
-            ax_train.plot([y_train_true.min(), y_train_true.max()], 
-                         [y_train_true.min(), y_train_true.max()], 
-                         color='red', linestyle='--', linewidth=2)
-            ax_train.set_title(f'{rutype} - Train\nR2={train_r2:.4f}, MAE={train_mae:.2f}\nn={train_idx.sum()}', 
-                              fontsize=9, fontweight='bold')
-        else:
-            ax_train.set_title(f'{rutype} - Train\nNo data', fontsize=9, fontweight='bold')
-        
-        ax_train.set_xlabel('True Energy', fontsize=8)
-        ax_train.set_ylabel('Predicted Energy', fontsize=8)
-        ax_train.grid(alpha=0.3)
-        
-        # Test plot
-        ax_test = axes[1, idx] if n_rutypes > 1 else axes[1]
+        ax = axes[idx]
         
         if test_idx.sum() > 0:
             y_test_true = y_test.iloc[test_idx]
@@ -310,26 +286,40 @@ for model_name in models_list:
             test_r2 = r2_score(y_test_true, y_test_pred_rt)
             test_mae = mean_absolute_error(y_test_true, y_test_pred_rt)
             
-            ax_test.scatter(y_test_true, y_test_pred_rt, color='lightcoral', alpha=0.4, s=10)
-            ax_test.plot([y_test_true.min(), y_test_true.max()], 
-                        [y_test_true.min(), y_test_true.max()], 
-                        color='red', linestyle='--', linewidth=2)
-            ax_test.set_title(f'{rutype} - Test\nR2={test_r2:.4f}, MAE={test_mae:.2f}\nn={test_idx.sum()}', 
-                             fontsize=9, fontweight='bold')
+            # draw the scatter plot
+            ax.scatter(y_test_true, y_test_pred_rt, color='coral', alpha=0.5, s=15, edgecolors='darkred', linewidths=0.5)
+            
+            # Perfect prediction line
+            min_val = min(y_test_true.min(), y_test_pred_rt.min())
+            max_val = max(y_test_true.max(), y_test_pred_rt.max())
+            ax.plot([min_val, max_val], [min_val, max_val], 
+                   color='red', linestyle='--', linewidth=2, label='Perfect Prediction')
+            
+            ax.set_title(f'{rutype} - Test Set\nR2={test_r2:.4f}, MAE={test_mae:.2f}\nn={test_idx.sum()}', 
+                        fontsize=10, fontweight='bold')
+            
+            # Add text box with metrics
+            textstr = f'R²={test_r2:.3f}\nMAE={test_mae:.2f} kW'
+            props = dict(boxstyle='round', facecolor='wheat', alpha=0.8)
+            ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=8,
+                   verticalalignment='top', bbox=props)
         else:
-            ax_test.set_title(f'{rutype} - Test\nNo data', fontsize=9, fontweight='bold')
+            ax.set_title(f'{rutype} - Test Set\nNo data', fontsize=10, fontweight='bold')
+            ax.text(0.5, 0.5, 'No Test Data', ha='center', va='center', fontsize=12, color='gray')
         
-        ax_test.set_xlabel('True Energy', fontsize=8)
-        ax_test.set_ylabel('Predicted Energy', fontsize=8)
-        ax_test.grid(alpha=0.3)
+        ax.set_xlabel('True Energy (kW)', fontsize=9)
+        ax.set_ylabel('Predicted Energy (kW)', fontsize=9)
+        ax.grid(alpha=0.3, linestyle=':')
+        ax.set_aspect('equal', adjustable='box')
     
-    plt.suptitle(f'{model_name} - Predictions by RUType', fontsize=14, fontweight='bold', y=0.995)
+    plt.suptitle(f'{model_name} - Test Set Predictions by RUType\n(Only test set shown - represents generalization ability)', 
+                fontsize=13, fontweight='bold', y=1.02)
     plt.tight_layout()
     
     filename = f'rutype_predictions_{model_name.replace(" ", "_").lower()}.png'
     plt.savefig(os.path.join(base_dir, filename), dpi=150, bbox_inches='tight')
     plt.close()
-    print(f"  Saved: {filename}")
+    print(f"  Saved: {filename} (Test set only)")
 
 print("\n" + "="*70)
 print("SUMMARY: Best and Worst Performing RUTypes (Test Set MAE)")
