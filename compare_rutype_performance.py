@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import os
 import pickle
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 import matplotlib.pyplot as plt
 
@@ -23,21 +24,16 @@ X = filtered_data[['load', 'RUType']]
 y = filtered_data['Energy']
 X_encoded = pd.get_dummies(X, columns=['RUType'], drop_first=True)
 
-# Split by time: 0-48 hours for training, 49-72 hours for testing
-train_mask = filtered_data['Hours'] <= 48
-test_mask = filtered_data['Hours'] > 48
-
-X_train = X_encoded[train_mask]
-X_test = X_encoded[test_mask]
-y_train = y[train_mask]
-y_test = y[test_mask]
+# Split data randomly (80/20) - same as task2_ai_model.py
+# Random split recommended by advisor to avoid temporal bias
+X_train, X_test, y_train, y_test = train_test_split(X_encoded, y, test_size=0.2, random_state=42)
 
 # Keep original RUType for grouping
-rutype_train = filtered_data.loc[train_mask, 'RUType']
-rutype_test = filtered_data.loc[test_mask, 'RUType']
+rutype_train = filtered_data.loc[X_train.index, 'RUType']
+rutype_test = filtered_data.loc[X_test.index, 'RUType']
 
-print(f"\nTraining set: Hours 1-48, {len(X_train):,} samples")
-print(f"Test set: Hours 49-72, {len(X_test):,} samples")
+print(f"\nTraining set: {len(X_train):,} samples ({len(X_train)/len(X_encoded)*100:.1f}%)")
+print(f"Test set: {len(X_test):,} samples ({len(X_test)/len(X_encoded)*100:.1f}%)")
 
 # Load pre-trained models
 print("\n" + "="*70)

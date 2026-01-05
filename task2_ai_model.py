@@ -40,17 +40,13 @@ if len(X) != len(y):
 
 print(f"Dataset size before splitting: {len(X)} samples")
 
-# Split data by time: 0-48 hours for training, 49-72 hours for testing
-train_mask = filtered_data['Hours'] <= 48
-test_mask = filtered_data['Hours'] > 48
+# Split data randomly into training (80%) and testing (20%) sets
+# Random split recommended by advisor to avoid temporal pattern bias
+# (e.g., weekday/weekend differences, weather changes across days)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-X_train = X[train_mask]
-X_test = X[test_mask]
-y_train = y[train_mask]
-y_test = y[test_mask]
-
-print(f"Training set: Hours 1-48, {len(X_train):,} samples ({len(X_train)/len(X)*100:.1f}%)")
-print(f"Test set: Hours 49-72, {len(X_test):,} samples ({len(X_test)/len(X)*100:.1f}%)")
+print(f"Training set: {len(X_train):,} samples ({len(X_train)/len(X)*100:.1f}%)")
+print(f"Test set: {len(X_test):,} samples ({len(X_test)/len(X)*100:.1f}%)")
 
 # Define models to train
 models = {
