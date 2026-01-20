@@ -146,41 +146,32 @@ plt.savefig(os.path.join(base_dir, 'task2_evaluation_metrics.png'), dpi=150)
 plt.close()
 print("Saved: task2_evaluation_metrics.png")
 
-# 2. Create train vs test prediction plots for all models
+# 2. Create prediction vs. true value plots for all models (Test Set Only)
 n_models = len(results)
-fig, axes = plt.subplots(2, n_models, figsize=(5*n_models, 10))
+fig, axes = plt.subplots(1, n_models, figsize=(5*n_models, 5.5), squeeze=False) # squeeze=False to always get a 2D array
 
 for idx, (model_name, result) in enumerate(results.items()):
-    y_train_pred = result['y_train_pred']
     y_test_pred = result['y_test_pred']
     metrics = result['metrics']
     
-    # Train predictions
-    ax_train = axes[0, idx]
-    ax_train.scatter(y_train, y_train_pred, color='skyblue', alpha=0.3, s=5)
-    ax_train.plot([y_train.min(), y_train.max()], [y_train.min(), y_train.max()], 
-                  color='red', linestyle='--', linewidth=2)
-    ax_train.set_title(f'{model_name}\nTrain: R²={metrics["train_r2"]:.4f}, MAE={metrics["train_mae"]:.2f}', 
-                      fontsize=10, fontweight='bold')
-    ax_train.set_xlabel('True Energy')
-    ax_train.set_ylabel('Predicted Energy')
-    ax_train.grid(alpha=0.3)
-    
     # Test predictions
-    ax_test = axes[1, idx]
-    ax_test.scatter(y_test, y_test_pred, color='lightcoral', alpha=0.3, s=5)
+    ax_test = axes[0, idx]
+    ax_test.scatter(y_test, y_test_pred, color='lightcoral', alpha=0.3, s=5, label='Test Predictions')
     ax_test.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 
-                 color='red', linestyle='--', linewidth=2)
-    ax_test.set_title(f'Test: R²={metrics["test_r2"]:.4f}, MAE={metrics["test_mae"]:.2f}', 
+                 color='red', linestyle='--', linewidth=2, label='Perfect Prediction')
+    ax_test.set_title(f'{model_name}\nTest: R²={metrics["test_r2"]:.4f}, MAE={metrics["test_mae"]:.2f}', 
                      fontsize=10, fontweight='bold')
-    ax_test.set_xlabel('True Energy')
-    ax_test.set_ylabel('Predicted Energy')
+    ax_test.set_xlabel('True Energy (kW)')
+    ax_test.set_ylabel('Predicted Energy (kW)')
     ax_test.grid(alpha=0.3)
+    ax_test.legend()
+    ax_test.set_aspect('equal', adjustable='box')
 
+fig.suptitle('Model Performance on Test Set (Generalization Ability)', fontsize=16, fontweight='bold', y=1.02)
 plt.tight_layout()
-plt.savefig(os.path.join(base_dir, 'task2_train_test_predictions.png'), dpi=150)
+plt.savefig(os.path.join(base_dir, 'task2_test_set_predictions.png'), dpi=150)
 plt.close()
-print("Saved: task2_train_test_predictions.png")
+print("Saved: task2_test_set_predictions.png")
 
 # 3. Create residuals plot for all models (test set)
 fig, axes = plt.subplots(1, n_models, figsize=(5*n_models, 5))

@@ -91,7 +91,7 @@ plt.ylabel(f"Hours from Start (Total: {num_hours} hours)", fontsize=14)
 
 # Add detailed colorbar
 cbar = plt.colorbar(ticks=[0, 1], shrink=0.6)
-cbar.set_ticklabels(['Missing Data / Multiple Cells', 'Single Cell + Data Present'])
+cbar.set_ticklabels(['Missing data', 'Present data'])
 cbar.ax.tick_params(labelsize=12)
 
 # Set axis ticks for better readability
@@ -113,7 +113,7 @@ total_possible = num_hours * len(all_bs_ids)
 green_cells = np.sum(coverage_matrix)
 coverage_percentage = (green_cells / total_possible) * 100
 
-plt.figtext(0.02, 0.02, f'Statistics: {int(green_cells):,}/{total_possible:,} cells ({coverage_percentage:.2f}%) have single-cell energy data', 
+plt.figtext(0.02, 0.02, f'Statistics: {int(green_cells):,}/{total_possible:,} data points ({coverage_percentage:.2f}%) are usable for single-cell analysis', 
             fontsize=12, bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8))
 
 # Save the plot
