@@ -3,7 +3,6 @@ Task 2: Predict Energy for New Data
 Input: CSV with only [BS, Time, load, RUType] (NO Energy column)
 Output: CSV with [BS, Time, load, RUType, predicted_energy]
 
-This simulates a real deployment scenario where users provide new data without ground truth.
 """
 
 import pandas as pd
@@ -61,7 +60,7 @@ with open(model_file, 'rb') as f:
     saved_data = pickle.load(f)
     xgboost_model = saved_data['models']['XGBoost']
     
-print("✓ XGBoost model loaded successfully")
+print("XGBoost model loaded successfully")
 
 # Make predictions
 print("\nMaking predictions...")
@@ -125,7 +124,7 @@ if os.path.exists(ground_truth_file):
     
     eval_output = os.path.join(base_dir, 'task2_prediction_evaluation.csv')
     df_eval.to_csv(eval_output, index=False)
-    print(f"\n✓ Evaluation results saved: task2_prediction_evaluation.csv")
+    print(f"\nEvaluation results saved: task2_prediction_evaluation.csv")
     
     # Error analysis by RUType
     print("\nError analysis by RUType:")
