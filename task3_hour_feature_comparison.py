@@ -20,10 +20,10 @@ print("="*70)
 print("TASK 3: HOUR FEATURE IMPACT ANALYSIS")
 print("="*70)
 
-# Load enriched data (has hour feature)
-df = pd.read_csv(os.path.join(base_dir, 'enriched_energy_data.csv'))
+# ⚠️ Use filtered_energy_data.csv (clean original data without pre-computed stats)
+df = pd.read_csv(os.path.join(base_dir, 'filtered_energy_data.csv'))
 
-# FIX: Correct hour feature - should be 0-23 (cyclic), not 1-72 (linear)
+# Extract hour feature from Time column
 df['Time'] = pd.to_datetime(df['Time'])
 df['hour'] = df['Time'].dt.hour  # Extract hour of day (0-23)
 
@@ -117,6 +117,13 @@ df_results['error_v1'] = np.abs(y_test.values - y_pred_v1)
 df_results['error_v2'] = np.abs(y_test.values - y_pred_v2)
 df_results['improvement'] = df_results['error_v1'] - df_results['error_v2']
 
+# Define a function for MAPE
+def mean_absolute_percentage_error(y_true, y_pred): 
+    y_true, y_pred = np.array(y_true), np.array(y_pred)
+    # Avoid division by zero
+    non_zero_mask = y_true != 0
+    return np.mean(np.abs((y_true[non_zero_mask] - y_pred[non_zero_mask]) / y_true[non_zero_mask])) * 100
+
 # Focus on early morning Type4 anomalies
 print("\n" + "="*70)
 print("EARLY MORNING ANOMALY ANALYSIS (Hours 0-5)")
@@ -126,13 +133,22 @@ for rutype in sorted(df_results['RUType'].unique()):
     mask_early = (df_results['hour'] <= 5) & (df_results['RUType'] == rutype)
     
     if mask_early.sum() > 0:
+        # MAE
         mae_v1_early = df_results[mask_early]['error_v1'].mean()
         mae_v2_early = df_results[mask_early]['error_v2'].mean()
         improvement = mae_v1_early - mae_v2_early
         
+        # MAPE
+        mape_v1_early = mean_absolute_percentage_error(
+            df_results[mask_early]['actual_energy'], df_results[mask_early]['pred_v1']
+        )
+        mape_v2_early = mean_absolute_percentage_error(
+            df_results[mask_early]['actual_energy'], df_results[mask_early]['pred_v2']
+        )
+        
         print(f"\n{rutype} (n={mask_early.sum()}):")
-        print(f"  Version A MAE: {mae_v1_early:.2f} kW")
-        print(f"  Version B MAE: {mae_v2_early:.2f} kW")
+        print(f"  Version A MAE: {mae_v1_early:.2f} kW | MAPE: {mape_v1_early:.2f}%")
+        print(f"  Version B MAE: {mae_v2_early:.2f} kW | MAPE: {mape_v2_early:.2f}%")
         print(f"  Improvement:   {improvement:.2f} kW ({improvement/mae_v1_early*100:.1f}%)")
 
 # Save detailed results
@@ -210,79 +226,93 @@ plt.savefig(os.path.join(base_dir, 'task3_hour_feature_heatmap_comparison.png'),
             dpi=300, bbox_inches='tight')
 print("✓ Saved: task3_hour_feature_heatmap_comparison.png")
 
-# Visualization 1.5: Task 2 style - Worst 10% sample distribution over time
+# Visualization 1.5: Task 2 style - Worst 10% sample proportion over time
 print("\n" + "="*70)
-print("GENERATING WORST 10% SAMPLES TIME DISTRIBUTION (TASK 2 STYLE)")
+print("GENERATING WORST 10% SAMPLES PROPORTION (BASED ON MAPE)")
 print("="*70)
 
-# Calculate 90th percentile threshold for worst 10%
-threshold_v1 = np.percentile(df_results['error_v1'], 90)
-threshold_v2 = np.percentile(df_results['error_v2'], 90)
+# Calculate relative error (percentage) for each sample
+df_results['relative_error_v1'] = np.abs(
+    (df_results['actual_energy'] - df_results['pred_v1']) / df_results['actual_energy']
+) * 100
+df_results['relative_error_v2'] = np.abs(
+    (df_results['actual_energy'] - df_results['pred_v2']) / df_results['actual_energy']
+) * 100
 
-print(f"Version A - 90th percentile error threshold: {threshold_v1:.2f} kW")
-print(f"Version B - 90th percentile error threshold: {threshold_v2:.2f} kW")
+# Calculate 90th percentile threshold for worst 10% (based on relative error)
+threshold_v1 = np.percentile(df_results['relative_error_v1'], 90)
+threshold_v2 = np.percentile(df_results['relative_error_v2'], 90)
+
+print(f"Version A - 90th percentile MAPE threshold: {threshold_v1:.2f}%")
+print(f"Version B - 90th percentile MAPE threshold: {threshold_v2:.2f}%")
 
 # Get unique times and RUTypes for full timeline
 all_times = sorted(df_results['Time'].unique())
 time_labels = [str(t) for t in all_times]
 
-# Create count matrices for worst 10% samples
-worst_matrix_v1 = np.zeros((len(rutypes), len(all_times)))
-worst_matrix_v2 = np.zeros((len(rutypes), len(all_times)))
+# Create proportion matrices for worst 10% samples
+worst_prop_v1 = np.zeros((len(rutypes), len(all_times)))
+worst_prop_v2 = np.zeros((len(rutypes), len(all_times)))
 
 for i, rutype in enumerate(rutypes):
     for j, time in enumerate(all_times):
         mask = (df_results['RUType'] == rutype) & (df_results['Time'] == time)
+        total_samples = mask.sum()
         
-        # Count samples exceeding threshold (worst 10%)
-        worst_v1 = ((df_results[mask]['error_v1'] >= threshold_v1).sum())
-        worst_v2 = ((df_results[mask]['error_v2'] >= threshold_v2).sum())
-        
-        worst_matrix_v1[i, j] = worst_v1
-        worst_matrix_v2[i, j] = worst_v2
+        if total_samples > 0:
+            # Count samples exceeding threshold (worst 10% based on relative error)
+            worst_count_v1 = ((df_results[mask]['relative_error_v1'] >= threshold_v1).sum())
+            worst_count_v2 = ((df_results[mask]['relative_error_v2'] >= threshold_v2).sum())
+            
+            # Calculate proportion
+            worst_prop_v1[i, j] = worst_count_v1 / total_samples
+            worst_prop_v2[i, j] = worst_count_v2 / total_samples
 
 # Plot side-by-side comparison
-fig, axes = plt.subplots(2, 1, figsize=(24, 10))
+fig, axes = plt.subplots(2, 1, figsize=(28, 14))
 
-# Heatmap 1: Version A worst samples
+# Heatmap 1: Version A worst samples proportion
 ax1 = axes[0]
-import seaborn as sns
-sns.heatmap(worst_matrix_v1, ax=ax1, cmap='YlOrRd', annot=True, fmt='g',
+sns.heatmap(worst_prop_v1, ax=ax1, cmap='YlOrRd', annot=True, fmt='.1%',
             xticklabels=time_labels, yticklabels=rutypes,
-            cbar_kws={'label': 'Error Sample Count'})
-ax1.set_xlabel('Time', fontsize=12)
-ax1.set_ylabel('RUType', fontsize=12)
-ax1.set_title('Version A: Time-RUType Distribution of Worst 10% Samples\n(load + RUType only)', 
-              fontsize=13, fontweight='bold')
-# Rotate x-axis labels
-plt.setp(ax1.get_xticklabels(), rotation=45, ha='right', fontsize=8)
+            cbar_kws={'label': 'Proportion of Worst 10% Samples (by MAPE)'},
+            annot_kws={'fontsize': 7}) 
+ax1.set_xlabel('Time', fontsize=13)
+ax1.set_ylabel('RUType', fontsize=13)
+ax1.set_title('Version A: Proportion of Worst 10% Samples by Time and RUType\n(load + RUType only, threshold based on relative error)', 
+              fontsize=14, fontweight='bold', pad=15)
+# Rotate x-axis labels and adjust size
+plt.setp(ax1.get_xticklabels(), rotation=90, ha='center', fontsize=7)
+plt.setp(ax1.get_yticklabels(), fontsize=10)
 
-# Heatmap 2: Version B worst samples
+# Heatmap 2: Version B worst samples proportion
 ax2 = axes[1]
-sns.heatmap(worst_matrix_v2, ax=ax2, cmap='YlOrRd', annot=True, fmt='g',
+sns.heatmap(worst_prop_v2, ax=ax2, cmap='YlOrRd', annot=True, fmt='.1%',
             xticklabels=time_labels, yticklabels=rutypes,
-            cbar_kws={'label': 'Error Sample Count'})
-ax2.set_xlabel('Time', fontsize=12)
-ax2.set_ylabel('RUType', fontsize=12)
-ax2.set_title('Version B: Time-RUType Distribution of Worst 10% Samples\n(load + RUType + hour)', 
-              fontsize=13, fontweight='bold')
-# Rotate x-axis labels
-plt.setp(ax2.get_xticklabels(), rotation=45, ha='right', fontsize=8)
+            cbar_kws={'label': 'Proportion of Worst 10% Samples (by MAPE)'},
+            annot_kws={'fontsize': 7})
+ax2.set_xlabel('Time', fontsize=13)
+ax2.set_ylabel('RUType', fontsize=13)
+ax2.set_title('Version B: Proportion of Worst 10% Samples by Time and RUType\n(load + RUType + hour, threshold based on relative error)', 
+              fontsize=14, fontweight='bold', pad=15)
+# Rotate x-axis labels and adjust size
+plt.setp(ax2.get_xticklabels(), rotation=90, ha='center', fontsize=7)
+plt.setp(ax2.get_yticklabels(), fontsize=10)
 
 plt.tight_layout()
-plt.savefig(os.path.join(base_dir, 'task3_worst_samples_timeline_heatmap.png'), 
+plt.savefig(os.path.join(base_dir, 'task3_worst_samples_proportion_heatmap.png'), 
             dpi=300, bbox_inches='tight')
-print("✓ Saved: task3_worst_samples_timeline_heatmap.png")
+print("✓ Saved: task3_worst_samples_proportion_heatmap.png")
 
-# Summary statistics
-total_worst_v1 = worst_matrix_v1.sum()
-total_worst_v2 = worst_matrix_v2.sum()
+# Summary statistics (This section is less meaningful for proportions, but kept for consistency)
+total_worst_v1 = (worst_prop_v1 > 0).sum()
+total_worst_v2 = (worst_prop_v2 > 0).sum()
 reduction = total_worst_v1 - total_worst_v2
 
-print(f"\nWorst 10% sample count:")
-print(f"  Version A: {int(total_worst_v1)} samples")
-print(f"  Version B: {int(total_worst_v2)} samples")
-print(f"  Reduction: {int(reduction)} samples ({reduction/total_worst_v1*100:.1f}%)")
+print(f"\nTime-RUType slots with worst samples:")
+print(f"  Version A: {int(total_worst_v1)} slots")
+print(f"  Version B: {int(total_worst_v2)} slots")
+print(f"  Reduction: {int(reduction)} slots")
 
 # Visualization 2: Box plots for early morning hours
 fig, axes = plt.subplots(1, 2, figsize=(16, 6))
@@ -364,5 +394,24 @@ print(f"3. Check heatmaps to see which RUTypes benefited most from hour feature"
 print(f"4. Early morning anomalies (hours 0-5) show specific improvements")
 print(f"\nNext steps:")
 print(f"- Review the heatmap to identify remaining anomalies")
+
+# Visualization 4: Energy Distribution by RUType
+print("\n" + "="*70)
+print("GENERATING ENERGY DISTRIBUTION BOXPLOT")
+print("="*70)
+
+fig, ax = plt.subplots(figsize=(12, 7))
+sns.boxplot(x='RUType', y='actual_energy', data=df_results, ax=ax, 
+            order=sorted(df_results['RUType'].unique()))
+ax.set_title('Energy Consumption Distribution by RUType', fontsize=14, fontweight='bold')
+ax.set_xlabel('RUType', fontsize=12)
+ax.set_ylabel('Energy (kW)', fontsize=12)
+ax.grid(axis='y', alpha=0.3)
+
+plt.tight_layout()
+plt.savefig(os.path.join(base_dir, 'task3_energy_distribution_by_rutype.png'), 
+            dpi=300, bbox_inches='tight')
+print("✓ Saved: task3_energy_distribution_by_rutype.png")
+print("Note: This plot helps verify if high MAE for a RUType is due to high energy consumption.")
 print(f"- Consider adding more features (equipment config, interactions)")
 print(f"- Investigate if measurement issues remain in certain time-RUType combinations")
