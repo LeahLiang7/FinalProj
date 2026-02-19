@@ -6,7 +6,8 @@ import numpy as np
 from xgboost import XGBRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import mean_absolute_error, r2_score, mean_absolute_percentage_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
+import matplotlib.pyplot as plt
 
 # Load data
 print("Loading data...")
@@ -14,11 +15,16 @@ df = pd.read_csv('filtered_energy_data.csv')
 print(f"Data shape: {df.shape}")
 print(f"Columns: {df.columns.tolist()}")
 
+# Extract hour of day (0-23) from Time column
+df['Time'] = pd.to_datetime(df['Time'])
+df['hour'] = df['Time'].dt.hour  # 0-23, cycles across 3 days
+
 # Prepare features and target
 # Exclude: Time (datetime), BS (identifier), CellName (identifier), Energy (target)
 # Include all other columns as features
+# Use 'hour' (0-23) instead of 'Hours' (0-72) for better periodicity
 feature_cols = ['load', 'ESMode1', 'ESMode2', 'ESMode3', 'ESMode4', 'ESMode5', 'ESMode6',
-                'Hours', 'RUType', 'Mode', 'Frequency', 'Bandwidth', 'Antennas', 'TXpower', 'BS_num']
+                'hour', 'RUType', 'Mode', 'Frequency', 'Bandwidth', 'Antennas', 'TXpower', 'BS_num']
 
 X = df[feature_cols].copy()
 y = df['Energy'].values
@@ -65,8 +71,8 @@ y_test_pred = xgb_model.predict(X_test_scaled)
 train_mae = mean_absolute_error(y_train, y_train_pred)
 test_mae = mean_absolute_error(y_test, y_test_pred)
 
-train_r2 = r2_score(y_train, y_train_pred)
-test_r2 = r2_score(y_test, y_test_pred)
+train_rmse = np.sqrt(mean_squared_error(y_train, y_train_pred))
+test_rmse = np.sqrt(mean_squared_error(y_test, y_test_pred))
 
 train_mape = mean_absolute_percentage_error(y_train, y_train_pred)
 test_mape = mean_absolute_percentage_error(y_test, y_test_pred)
@@ -78,12 +84,12 @@ print("="*60)
 print(f"\nNumber of features used: {X_train.shape[1]}")
 print(f"\nTraining Set:")
 print(f"  MAE:  {train_mae:.2f} kW")
-print(f"  R²:   {train_r2:.4f}")
+print(f"  RMSE: {train_rmse:.2f} kW")
 print(f"  MAPE: {train_mape:.2%}")
 
 print(f"\nTest Set:")
 print(f"  MAE:  {test_mae:.2f} kW")
-print(f"  R²:   {test_r2:.4f}")
+print(f"  RMSE: {test_rmse:.2f} kW")
 print(f"  MAPE: {test_mape:.2%}")
 
 # Feature importance
@@ -95,6 +101,25 @@ feature_importance = pd.DataFrame({
 print(f"\nTop 10 Most Important Features:")
 print(feature_importance.head(10).to_string(index=False))
 
+# Visualize top 10 feature importance
+print("\nGenerating feature importance plot...")
+top_10 = feature_importance.head(10)
+
+fig, ax = plt.subplots(figsize=(10, 6))
+ax.barh(range(len(top_10)), top_10['importance'].values, color='steelblue', alpha=0.8)
+ax.set_yticks(range(len(top_10)))
+ax.set_yticklabels(top_10['feature'].values)
+ax.set_xlabel('Importance Score', fontsize=12)
+ax.set_title('Top 10 Most Important Features (XGBoost - All Features)', 
+             fontsize=14, fontweight='bold')
+ax.grid(axis='x', alpha=0.3)
+ax.invert_yaxis()  # Highest importance at top
+
+plt.tight_layout()
+plt.savefig('xgboost_all_features_importance.png', dpi=300, bbox_inches='tight')
+plt.close()
+print("✓ Saved: xgboost_all_features_importance.png")
+
 # Save results
 with open('xgboost_all_features_results.txt', 'w', encoding='utf-8') as f:
     f.write("XGBoost Model Results (ALL Features)\n")
@@ -102,11 +127,11 @@ with open('xgboost_all_features_results.txt', 'w', encoding='utf-8') as f:
     f.write(f"Number of features used: {X_train.shape[1]}\n\n")
     f.write(f"Training Set:\n")
     f.write(f"  MAE:  {train_mae:.2f} kW\n")
-    f.write(f"  R²:   {train_r2:.4f}\n")
+    f.write(f"  RMSE: {train_rmse:.2f} kW\n")
     f.write(f"  MAPE: {train_mape:.2%}\n\n")
     f.write(f"Test Set:\n")
     f.write(f"  MAE:  {test_mae:.2f} kW\n")
-    f.write(f"  R²:   {test_r2:.4f}\n")
+    f.write(f"  RMSE: {test_rmse:.2f} kW\n")
     f.write(f"  MAPE: {test_mape:.2%}\n\n")
     f.write(f"Top 10 Most Important Features:\n")
     f.write(feature_importance.head(10).to_string(index=False))
