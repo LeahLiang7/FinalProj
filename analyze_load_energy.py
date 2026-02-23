@@ -67,10 +67,54 @@ for rutype in sorted(df['RUType'].unique()):
         print(f"    Average Load: {normal_stats['Load_Mean'].mean():.3f}")
         print(f"    Load Std Dev: {normal_stats['Load_Std'].mean():.3f}")
 
-# --- 4. Visualization: Load vs Energy Scatter Plots ---
+# --- 4. Visualization: Overall Load vs Energy (All RUTypes Combined) ---
 print("\n" + "="*70)
 print("Generating visualizations...")
 print("="*70 + "\n")
+
+print("Creating overall load vs energy plot (all RUTypes combined)...")
+
+# Get all flat-line BS
+flat_bs_list_all = bs_stats_df[bs_stats_df['Is_FlatLine'] == True]['BS'].tolist()
+
+# Separate flat-line and normal data for all RUTypes
+flat_data_all = df[df['BS'].isin(flat_bs_list_all)]
+normal_data_all = df[~df['BS'].isin(flat_bs_list_all)]
+
+# Create overall plot
+fig_overall, ax_overall = plt.subplots(figsize=(12, 8))
+
+if len(normal_data_all) > 0:
+    ax_overall.scatter(normal_data_all['load'], normal_data_all['Energy'], 
+              alpha=0.2, s=8, c='steelblue', label=f'Normal BS (n={len(normal_data_all)})')
+
+if len(flat_data_all) > 0:
+    ax_overall.scatter(flat_data_all['load'], flat_data_all['Energy'], 
+              alpha=0.4, s=12, c='red', label=f'Flat-line BS (n={len(flat_data_all)})', marker='x')
+
+ax_overall.set_title('Load vs Energy Consumption - All RUTypes Combined\n(Red = Flat-line BS, Blue = Normal BS)', 
+            fontsize=14, fontweight='bold')
+ax_overall.set_xlabel('Load', fontsize=12)
+ax_overall.set_ylabel('Energy Consumption (kW)', fontsize=12)
+ax_overall.legend(fontsize=11)
+ax_overall.grid(True, alpha=0.3)
+
+# Add statistics box
+flat_load_mean = flat_data_all['load'].mean() if len(flat_data_all) > 0 else 0
+normal_load_mean = normal_data_all['load'].mean() if len(normal_data_all) > 0 else 0
+stats_text = f'Flat-line BS avg load: {flat_load_mean:.3f}\nNormal BS avg load: {normal_load_mean:.3f}'
+ax_overall.text(0.98, 0.02, stats_text, transform=ax_overall.transAxes,
+                fontsize=10, verticalalignment='bottom', horizontalalignment='right',
+                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
+plt.tight_layout()
+overall_plot_path = os.path.join(BASE_DIR, 'load_energy_overall.png')
+plt.savefig(overall_plot_path, dpi=150, bbox_inches='tight')
+print(f"✓ Overall load vs energy plot saved to: {overall_plot_path}\n")
+plt.close()
+
+# --- 5. Visualization: Load vs Energy by RUType ---
+print("Creating load vs energy plots by RUType...")
 
 rutypes = sorted(df['RUType'].unique())
 n_types = len(rutypes)
@@ -117,9 +161,10 @@ plt.suptitle('Load vs Energy Consumption Analysis by RUType\n(Red = Flat-line BS
             fontsize=16, fontweight='bold')
 plt.tight_layout()
 plt.savefig(OUTPUT_PLOT, dpi=150, bbox_inches='tight')
-print(f"Load vs Energy plot saved to: {OUTPUT_PLOT}")
+print(f"✓ Load vs energy by RUType plot saved to: {OUTPUT_PLOT}")
+plt.close()
 
-# --- 5. Additional Analysis: Load Distribution ---
+# --- 6. Additional Analysis: Load Distribution ---
 print("\n" + "="*70)
 print("Load Distribution Summary")
 print("="*70)
