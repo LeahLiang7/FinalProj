@@ -82,34 +82,30 @@ flat_data_all = df[df['BS'].isin(flat_bs_list_all)]
 normal_data_all = df[~df['BS'].isin(flat_bs_list_all)]
 
 # Create overall plot
-fig_overall, ax_overall = plt.subplots(figsize=(12, 8))
+fig_overall, ax_overall = plt.subplots(figsize=(16, 12))
 
 if len(normal_data_all) > 0:
     ax_overall.scatter(normal_data_all['load'], normal_data_all['Energy'], 
-              alpha=0.2, s=8, c='steelblue', label=f'Normal BS (n={len(normal_data_all)})')
+              alpha=0.2, s=16, c='steelblue')
 
 if len(flat_data_all) > 0:
     ax_overall.scatter(flat_data_all['load'], flat_data_all['Energy'], 
-              alpha=0.4, s=12, c='red', label=f'Flat-line BS (n={len(flat_data_all)})', marker='x')
+              alpha=0.4, s=24, c='red', marker='x')
 
-ax_overall.set_title('Load vs Energy Consumption - All RUTypes Combined\n(Red = Flat-line BS, Blue = Normal BS)', 
-            fontsize=14, fontweight='bold')
-ax_overall.set_xlabel('Load', fontsize=12)
-ax_overall.set_ylabel('Energy Consumption (kW)', fontsize=12)
-ax_overall.legend(fontsize=11)
+# Add legend in top-left corner
+legend_text = 'Red = Flat-line BS\nBlue = Normal BS'
+ax_overall.text(0.02, 0.98, legend_text, transform=ax_overall.transAxes,
+                fontsize=28, verticalalignment='top', horizontalalignment='left',
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8, edgecolor='black', linewidth=1.5))
+
+ax_overall.set_xlabel('Load', fontsize=32)
+ax_overall.set_ylabel('Energy Consumption', fontsize=32)
+ax_overall.tick_params(axis='both', which='major', labelsize=28)
 ax_overall.grid(True, alpha=0.3)
-
-# Add statistics box
-flat_load_mean = flat_data_all['load'].mean() if len(flat_data_all) > 0 else 0
-normal_load_mean = normal_data_all['load'].mean() if len(normal_data_all) > 0 else 0
-stats_text = f'Flat-line BS avg load: {flat_load_mean:.3f}\nNormal BS avg load: {normal_load_mean:.3f}'
-ax_overall.text(0.98, 0.02, stats_text, transform=ax_overall.transAxes,
-                fontsize=10, verticalalignment='bottom', horizontalalignment='right',
-                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
 
 plt.tight_layout()
 overall_plot_path = os.path.join(BASE_DIR, 'load_energy_overall.png')
-plt.savefig(overall_plot_path, dpi=150, bbox_inches='tight')
+plt.savefig(overall_plot_path, dpi=300, bbox_inches='tight')
 print(f"✓ Overall load vs energy plot saved to: {overall_plot_path}\n")
 plt.close()
 
@@ -118,11 +114,14 @@ print("Creating load vs energy plots by RUType...")
 
 rutypes = sorted(df['RUType'].unique())
 n_types = len(rutypes)
-n_cols = 3
+n_cols = 2
 n_rows = (n_types + n_cols - 1) // n_cols
 
-fig, axes = plt.subplots(n_rows, n_cols, figsize=(18, 6*n_rows))
-axes = axes.flatten()
+fig, axes = plt.subplots(n_rows, n_cols, figsize=(24, 12*n_rows))
+if n_types == 1:
+    axes = [axes]
+else:
+    axes = axes.flatten()
 
 for idx, rutype in enumerate(rutypes):
     ax = axes[idx]
@@ -139,18 +138,18 @@ for idx, rutype in enumerate(rutypes):
     # Plot
     if len(normal_data) > 0:
         ax.scatter(normal_data['load'], normal_data['Energy'], 
-                  alpha=0.3, s=10, c='steelblue', label='Normal BS')
+                  alpha=0.3, s=20, c='steelblue')
     
     if len(flat_data) > 0:
         ax.scatter(flat_data['load'], flat_data['Energy'], 
-                  alpha=0.3, s=10, c='red', label='Flat-line BS')
+                  alpha=0.3, s=20, c='red', marker='x')
     
     # Customize
     ax.set_title(f'{rutype}\n({len(flat_bs_list)} flat-line / {rutype_data["BS"].nunique()} total BS)', 
-                fontsize=12, fontweight='bold')
-    ax.set_xlabel('Load', fontsize=11)
-    ax.set_ylabel('Energy Consumption', fontsize=11)
-    ax.legend(fontsize=9)
+                fontsize=24, fontweight='bold')
+    ax.set_xlabel('Load', fontsize=22)
+    ax.set_ylabel('Energy Consumption', fontsize=22)
+    ax.tick_params(axis='both', which='major', labelsize=18)
     ax.grid(True, alpha=0.3)
 
 # Hide unused subplots
@@ -158,9 +157,9 @@ for idx in range(n_types, len(axes)):
     axes[idx].axis('off')
 
 plt.suptitle('Load vs Energy Consumption Analysis by RUType\n(Red = Flat-line BS, Blue = Normal BS)', 
-            fontsize=16, fontweight='bold')
+            fontsize=32, fontweight='bold', y=0.998)
 plt.tight_layout()
-plt.savefig(OUTPUT_PLOT, dpi=150, bbox_inches='tight')
+plt.savefig(OUTPUT_PLOT, dpi=300, bbox_inches='tight')
 print(f"✓ Load vs energy by RUType plot saved to: {OUTPUT_PLOT}")
 plt.close()
 
