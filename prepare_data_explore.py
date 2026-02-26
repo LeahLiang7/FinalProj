@@ -76,7 +76,7 @@ for time_idx, time_point in enumerate(all_times):
             coverage_matrix[time_idx, bs_idx] = 0
 
 # Create large figure to show all 1020 base stations clearly
-plt.figure(figsize=(20, 10))
+plt.figure(figsize=(24, 12))
 
 # Create custom colormap: 0=dark blue (missing/multiple cells), 1=green (single cell + data)
 colors = ['darkblue', 'green']
@@ -85,25 +85,24 @@ custom_cmap = ListedColormap(colors)
 plt.imshow(coverage_matrix, aspect='auto', cmap=custom_cmap, origin='upper')
 
 # Customize the plot
-plt.title("Energy Data Coverage for All Base Stations (B_0 to B_1019)", fontsize=16, fontweight='bold')
-plt.xlabel("Base Station Index (B_0 to B_1019)", fontsize=14)
-plt.ylabel(f"Hours from Start (Total: {num_hours} hours)", fontsize=14)
+plt.xlabel("Base Station Index (B_0 to B_1019)", fontsize=32)
+plt.ylabel(f"Hours from Start (Total: {num_hours} hours)", fontsize=32)
 
 # Add detailed colorbar
 cbar = plt.colorbar(ticks=[0, 1], shrink=0.6)
-cbar.set_ticklabels(['Missing data', 'Present data'])
-cbar.ax.tick_params(labelsize=12)
+cbar.set_ticklabels(['Missing data', 'Present data'], fontsize=32)
+cbar.ax.tick_params(labelsize=32)
 
 # Set axis ticks for better readability
 # X-axis: show every 100th base station
 x_tick_positions = range(0, len(all_bs_ids), 100)
 x_tick_labels = [f'B_{i*100}' for i in range(len(x_tick_positions))]
-plt.xticks(x_tick_positions, x_tick_labels, rotation=45)
+plt.xticks(x_tick_positions, x_tick_labels, rotation=45, fontsize=32)
 
 # Y-axis: show every 24 hours (daily intervals)
 y_tick_positions = range(0, num_hours, 24)
 y_tick_labels = [f'{h}h' for h in range(0, num_hours, 24)]
-plt.yticks(y_tick_positions, y_tick_labels)
+plt.yticks(y_tick_positions, y_tick_labels, fontsize=32)
 
 # Add grid for better readability
 plt.grid(True, alpha=0.2)

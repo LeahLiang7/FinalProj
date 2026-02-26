@@ -400,13 +400,32 @@ print("\n" + "="*70)
 print("GENERATING ENERGY DISTRIBUTION BOXPLOT")
 print("="*70)
 
-fig, ax = plt.subplots(figsize=(12, 7))
-sns.boxplot(x='RUType', y='actual_energy', data=df_results, ax=ax, 
-            order=sorted(df_results['RUType'].unique()))
-ax.set_title('Energy Consumption Distribution by RUType', fontsize=14, fontweight='bold')
-ax.set_xlabel('RUType', fontsize=12)
-ax.set_ylabel('Energy (kW)', fontsize=12)
-ax.grid(axis='y', alpha=0.3)
+fig, ax = plt.subplots(figsize=(24, 16))
+bp = ax.boxplot([df_results[df_results['RUType']==rt]['actual_energy'].values 
+                  for rt in sorted(df_results['RUType'].unique())],
+                 labels=sorted(df_results['RUType'].unique()),
+                 patch_artist=True,
+                 widths=0.6,
+                 # Make lines thicker
+                 boxprops=dict(linewidth=3, edgecolor='black'),
+                 whiskerprops=dict(linewidth=3, color='black'),
+                 capprops=dict(linewidth=3, color='black'),
+                 medianprops=dict(linewidth=4, color='red'),
+                 # Make outlier points larger
+                 flierprops=dict(marker='o', markersize=10, markerfacecolor='black', 
+                                markeredgecolor='black', alpha=0.5, linewidth=2))
+
+# Color the boxes
+colors = ['steelblue'] * len(sorted(df_results['RUType'].unique()))
+for patch, color in zip(bp['boxes'], colors):
+    patch.set_facecolor(color)
+    patch.set_alpha(0.7)
+
+# ax.set_title('Energy Consumption Distribution by RUType', fontsize=14, fontweight='bold')
+ax.set_xlabel('RUType', fontsize=40, fontweight='bold')
+ax.set_ylabel('Energy', fontsize=40, fontweight='bold')
+ax.tick_params(axis='both', which='major', labelsize=36, width=2, length=8)
+ax.grid(axis='y', alpha=0.3, linewidth=1.5)
 
 plt.tight_layout()
 plt.savefig(os.path.join(base_dir, 'task3_energy_distribution_by_rutype.png'), 

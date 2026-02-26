@@ -178,3 +178,125 @@ for rutype in sorted(df['RUType'].unique()):
 print("\n" + "="*70)
 print("Analysis complete!")
 print("="*70)
+
+# --- 7. Time Series Analysis: Average Load over Time (All RUTypes Combined) ---
+print("\nGenerating time series plots...")
+
+# Calculate average load and energy for each hour across all RUTypes
+time_series = df.groupby('Hours').agg({
+    'load': 'mean',
+    'Energy': 'mean'
+}).reset_index()
+
+# Plot 1: Average Load over Time
+fig1, ax1 = plt.subplots(1, 1, figsize=(24, 16))
+
+ax1.plot(time_series['Hours'], time_series['load'], 
+         linewidth=3, color='steelblue', marker='o', markersize=8)
+
+ax1.set_xlabel('Hour (72h = 3 days)', fontsize=36, fontweight='bold')
+ax1.set_ylabel('Average Load', fontsize=36, fontweight='bold')
+
+# Set x-ticks every 6 hours with 24-hour format labels
+x_ticks = range(1, 73, 6)
+x_labels = [f"Day{((h-1)//24)+1}\n{((h-1)%24):02d}:00" for h in x_ticks]
+ax1.set_xticks(x_ticks)
+ax1.set_xticklabels(x_labels, rotation=45, ha='right', fontsize=32)
+
+ax1.tick_params(axis='y', labelsize=32)
+ax1.grid(True, alpha=0.3, linestyle='--')
+ax1.set_xlim(1, 72)
+
+plt.tight_layout()
+load_time_plot = os.path.join(BASE_DIR, 'average_load_over_time.png')
+plt.savefig(load_time_plot, dpi=150, bbox_inches='tight')
+print(f"✓ Average load over time plot saved to: {load_time_plot}")
+plt.close()
+
+# Plot 2: Average Energy over Time
+fig2, ax2 = plt.subplots(1, 1, figsize=(24, 16))
+
+ax2.plot(time_series['Hours'], time_series['Energy'], 
+         linewidth=3, color='darkgreen', marker='o', markersize=8)
+
+ax2.set_xlabel('Hour (72h = 3 days)', fontsize=36, fontweight='bold')
+ax2.set_ylabel('Average Energy Consumption', fontsize=36, fontweight='bold')
+
+# Set x-ticks every 6 hours with 24-hour format labels
+ax2.set_xticks(x_ticks)
+ax2.set_xticklabels(x_labels, rotation=45, ha='right', fontsize=32)
+
+ax2.tick_params(axis='y', labelsize=32)
+ax2.grid(True, alpha=0.3, linestyle='--')
+ax2.set_xlim(1, 72)
+
+plt.tight_layout()
+energy_time_plot = os.path.join(BASE_DIR, 'average_energy_over_time.png')
+plt.savefig(energy_time_plot, dpi=150, bbox_inches='tight')
+print(f"✓ Average energy over time plot saved to: {energy_time_plot}")
+plt.close()
+
+# Plot 3: Load and Energy Correlation - Dual Y-axis Time Series
+fig3, ax3 = plt.subplots(1, 1, figsize=(24, 16))
+
+# Plot load on primary y-axis
+color_load = 'steelblue'
+ax3.plot(time_series['Hours'], time_series['load'], 
+         linewidth=4, color=color_load, marker='o', markersize=10, label='Average Load')
+ax3.set_xlabel('Hour', fontsize=40, fontweight='bold')
+ax3.set_ylabel('Average Load', fontsize=40, fontweight='bold', color=color_load)
+ax3.tick_params(axis='y', labelsize=36, labelcolor=color_load, width=2, length=8)
+ax3.tick_params(axis='x', labelsize=36, width=2, length=8)
+
+# Set x-ticks every 6 hours
+ax3.set_xticks(x_ticks)
+ax3.set_xticklabels(x_labels, rotation=45, ha='right', fontsize=32)
+ax3.set_xlim(1, 72)
+
+# Create secondary y-axis for energy
+ax3_secondary = ax3.twinx()
+color_energy = 'darkgreen'
+ax3_secondary.plot(time_series['Hours'], time_series['Energy'], 
+                   linewidth=4, color=color_energy, marker='s', markersize=10, 
+                   label='Average Energy', linestyle='--')
+ax3_secondary.set_ylabel('Average Energy Consumption', fontsize=40, fontweight='bold', 
+                         color=color_energy)
+ax3_secondary.tick_params(axis='y', labelsize=36, labelcolor=color_energy, width=2, length=8)
+
+# Add grid
+ax3.grid(True, alpha=0.3, linestyle='--', linewidth=1.5)
+
+# Add legend
+lines1, labels1 = ax3.get_legend_handles_labels()
+lines2, labels2 = ax3_secondary.get_legend_handles_labels()
+legend = ax3.legend(lines1 + lines2, labels1 + labels2, loc='upper left', fontsize=32, 
+                    framealpha=0.9, edgecolor='black')
+legend.get_frame().set_linewidth(2)
+
+plt.tight_layout()
+load_energy_correlation_plot = os.path.join(BASE_DIR, 'load_energy_correlation_timeseries.png')
+plt.savefig(load_energy_correlation_plot, dpi=150, bbox_inches='tight')
+print(f"✓ Load-Energy correlation time series plot saved to: {load_energy_correlation_plot}")
+plt.close()
+
+# Plot 4: Load vs Energy Scatter Plot (All Data Points)
+print("\nGenerating load vs energy scatter plot...")
+fig4, ax4 = plt.subplots(1, 1, figsize=(24, 16))
+
+# Plot all data points with larger markers
+ax4.scatter(df['load'], df['Energy'], alpha=0.3, s=80, c='steelblue', edgecolors='none')
+
+ax4.set_xlabel('Load', fontsize=40, fontweight='bold')
+ax4.set_ylabel('Energy Consumption', fontsize=40, fontweight='bold')
+ax4.tick_params(axis='both', which='major', labelsize=36, width=2, length=8)
+ax4.grid(True, alpha=0.3, linestyle='--', linewidth=1.5)
+
+plt.tight_layout()
+scatter_plot_path = os.path.join(BASE_DIR, 'load_energy_scatter.png')
+plt.savefig(scatter_plot_path, dpi=150, bbox_inches='tight')
+print(f"✓ Load vs Energy scatter plot saved to: {scatter_plot_path}")
+plt.close()
+
+print("\n" + "="*70)
+print("All visualizations completed!")
+print("="*70)

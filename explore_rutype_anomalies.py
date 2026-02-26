@@ -90,49 +90,48 @@ num_types = len(rutypes)
 
 print(f"Found {num_types} unique RUTypes: {rutypes}")
 
-# --- 5. Create subplots - one for each RUType ---
+# --- 5. Create a single large plot for all RUTypes ---
 print("Generating visualization...")
-# Calculate optimal grid layout
-n_cols = min(3, num_types)  # Max 3 columns
-n_rows = (num_types + n_cols - 1) // n_cols  # Ceiling division
 
-fig, axes = plt.subplots(n_rows, n_cols, figsize=(8*n_cols, 6*n_rows))
-if num_types == 1:
-    axes = np.array([axes])
-axes = axes.flatten()
+# Define colors for each RUType
+colors = plt.cm.tab10(np.linspace(0, 1, num_types))
 
-# --- 6. Plot each RUType in a separate subplot ---
+# Create a single large figure
+fig, ax = plt.subplots(1, 1, figsize=(24, 16))
+
+# --- 6. Plot all RUTypes on the same plot ---
 for idx, rutype in enumerate(rutypes):
-    ax = axes[idx]
-    
     # Filter data for this RUType
     rutype_data = df[df['RUType'] == rutype].copy()
     
     # Plot each individual energy curve (each base station)
-    for bs in rutype_data['BS'].unique():
+    for bs_idx, bs in enumerate(rutype_data['BS'].unique()):
         bs_data = rutype_data[rutype_data['BS'] == bs].sort_values('Hours')
-        ax.plot(bs_data['Hours'], bs_data['Energy'], alpha=0.3, linewidth=0.8)
-    
-    # Customize subplot
-    ax.set_title(f'{rutype} - Energy Patterns (3 Days)', fontsize=14, fontweight='bold')
-    ax.set_xlabel('Hour (72h = 3 days)', fontsize=12)
-    ax.set_ylabel('Energy Consumption', fontsize=12)
-    
-    # Set x-ticks every 6 hours with 24-hour format labels
-    x_ticks = range(1, 73, 6)
-    x_labels = [f"Day{((h-1)//24)+1}\n{((h-1)%24):02d}:00" for h in x_ticks]
-    ax.set_xticks(x_ticks)
-    ax.set_xticklabels(x_labels, rotation=45, ha='right', fontsize=10)
-    
-    ax.grid(True, alpha=0.3, linestyle='--')
-    ax.set_xlim(1, 72)
+        # Only add label for the first BS of each RUType (for legend)
+        label = rutype if bs_idx == 0 else None
+        ax.plot(bs_data['Hours'], bs_data['Energy'], 
+                color=colors[idx], alpha=0.3, linewidth=1.5, label=label)
 
-# Hide unused subplots
-for idx in range(num_types, len(axes)):
-    axes[idx].axis('off')
+# --- 7. Customize the plot ---
+ax.set_xlabel('Hour (72h = 3 days)', fontsize=36, fontweight='bold')
+ax.set_ylabel('Energy Consumption', fontsize=36, fontweight='bold')
 
-# --- 7. Save and Show Plot ---
-plt.suptitle('Energy Consumption Anomaly Analysis by RUType', fontsize=18, fontweight='bold', y=0.995)
+# Set x-ticks every 6 hours with 24-hour format labels
+x_ticks = range(1, 73, 6)
+x_labels = [f"Day{((h-1)//24)+1}\n{((h-1)%24):02d}:00" for h in x_ticks]
+ax.set_xticks(x_ticks)
+ax.set_xticklabels(x_labels, rotation=45, ha='right', fontsize=32)
+
+# Set y-tick label size
+ax.tick_params(axis='y', labelsize=32)
+
+ax.grid(True, alpha=0.3, linestyle='--')
+ax.set_xlim(1, 72)
+
+# Add legend with large font
+ax.legend(fontsize=32, loc='best', framealpha=0.9)
+
+# --- 8. Save and Show Plot ---
 plt.tight_layout()
 plt.savefig(OUTPUT_PLOT, dpi=150, bbox_inches='tight')
 print(f"Anomaly exploration plot saved to: {OUTPUT_PLOT}")

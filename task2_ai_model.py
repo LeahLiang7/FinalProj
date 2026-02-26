@@ -56,6 +56,13 @@ models = {
     'XGBoost': xgb.XGBRegressor(n_estimators=100, random_state=42, max_depth=6, learning_rate=0.1)
 }
 
+# Function to calculate MAPE
+def mean_absolute_percentage_error(y_true, y_pred):
+    """Calculate Mean Absolute Percentage Error"""
+    y_true, y_pred = np.array(y_true), np.array(y_pred)
+    non_zero_mask = y_true != 0
+    return np.mean(np.abs((y_true[non_zero_mask] - y_pred[non_zero_mask]) / y_true[non_zero_mask])) * 100
+
 # Function to evaluate model
 def evaluate_model(model, X_train, X_test, y_train, y_test):
     """Train and evaluate a model, return predictions and metrics"""
@@ -66,9 +73,11 @@ def evaluate_model(model, X_train, X_test, y_train, y_test):
     
     metrics = {
         'train_mae': mean_absolute_error(y_train, y_train_pred),
+        'train_mape': mean_absolute_percentage_error(y_train, y_train_pred),
         'train_rmse': np.sqrt(mean_squared_error(y_train, y_train_pred)),
         'train_r2': r2_score(y_train, y_train_pred),
         'test_mae': mean_absolute_error(y_test, y_test_pred),
+        'test_mape': mean_absolute_percentage_error(y_test, y_test_pred),
         'test_rmse': np.sqrt(mean_squared_error(y_test, y_test_pred)),
         'test_r2': r2_score(y_test, y_test_pred)
     }
@@ -90,8 +99,8 @@ for model_name, model in models.items():
         'metrics': metrics
     }
     
-    print(f"  Train - MAE: {metrics['train_mae']:.2f}, RMSE: {metrics['train_rmse']:.2f}, R²: {metrics['train_r2']:.4f}")
-    print(f"  Test  - MAE: {metrics['test_mae']:.2f}, RMSE: {metrics['test_rmse']:.2f}, R²: {metrics['test_r2']:.4f}")
+    print(f"  Train - MAE: {metrics['train_mae']:.2f}, MAPE: {metrics['train_mape']:.2f}%, RMSE: {metrics['train_rmse']:.2f}, R²: {metrics['train_r2']:.4f}")
+    print(f"  Test  - MAE: {metrics['test_mae']:.2f}, MAPE: {metrics['test_mape']:.2f}%, RMSE: {metrics['test_rmse']:.2f}, R²: {metrics['test_r2']:.4f}")
 
 # Save trained models for reuse
 import pickle
@@ -109,6 +118,19 @@ with open(os.path.join(base_dir, 'trained_models.pkl'), 'wb') as f:
         }
     }, f)
 print("Saved: trained_models.pkl")
+
+# Print Summary Table
+print("\n" + "="*90)
+print("MODEL PERFORMANCE SUMMARY (TEST SET)")
+print("="*90)
+print(f"{'Model':<20} {'MAE':>12} {'MAPE':>12} {'RMSE':>12} {'R²':>12}")
+print("-"*90)
+for model_name, result in results.items():
+    metrics = result['metrics']
+    print(f"{model_name:<20} {metrics['test_mae']:>12.2f} {metrics['test_mape']:>11.2f}% {metrics['test_rmse']:>12.2f} {metrics['test_r2']:>12.4f}")
+print("="*90)
+print("Note: Lower MAE, MAPE, and RMSE indicate better performance. Higher R² indicates better fit.")
+print("="*90 + "\n")
 
 # Save metrics comparison
 metrics_df = pd.DataFrame({
